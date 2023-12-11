@@ -21,7 +21,7 @@ $rootCert = New-SelfSignedCertificate `
 
 # Password protect and export the root certificate authority to be imported on the target machine (client)
 [String]$rootCertPath = Join-Path -Path 'cert:\CurrentUser\My\' -ChildPath "$($rootCert.Thumbprint)"
-Export-Certificate -Cert $rootCertPath -FilePath "RootCA_$dateVariable_$($myHostName).crt"
+Export-Certificate -Cert $rootCertPath -FilePath "$dateVariable_RootCA_$($myHostName).crt"
 
 ## Cert Generation - Client
 # Create a self signed client certificate and specify the IP Address and DNS Hostname
@@ -38,7 +38,7 @@ $testCert = New-SelfSignedCertificate `
 
 # Add the certificate to the certificate store and export it
 [String]$testCertPath = Join-Path -Path 'cert:\LocalMachine\My\' -ChildPath "$($testCert.Thumbprint)"
-Export-Certificate -Cert $testCertPath -FilePath "clientcert_$dateVariable_$($myHostName).crt"
+Export-Certificate -Cert $testCertPath -FilePath "$dateVariable_clientcert_$($myHostName).crt"
 
 # Optional - Export as PFX, remember to set a password if you do
 # [System.Security.SecureString]$rootCertPassword = ConvertTo-SecureString -String "password" -Force -AsPlainText
@@ -64,15 +64,15 @@ Write-Host "New SSL Thumbprint: $GetSSLThumbprint"
 
 # Get App ID of WAC
 $netshOutput = & cmd.exe /c $netshCommandShow
-$netshCommandGetAppID = ($netshOutput | Select-String -Pattern 'Application ID\s+:\s+(.+)').Matches.Groups[1].Value.Trim()
-Write-Host "Application ID: $netshCommandGetAppID"
+$GetAppID = ($netshOutput | Select-String -Pattern 'Application ID\s+:\s+(.+)').Matches.Groups[1].Value.Trim()
+Write-Host "Application ID: $GetAppID"
 
 # Delete SSL Binding
 $netshCommandDelete = "netsh http delete sslcert ipport=0.0.0.0:6516"
 & cmd.exe /c $netshCommandDelete
 
 # Recreate SSL Binding with same App ID and new SSL Thumbprint
-$netshCommandAdd = "netsh http add sslcert ipport=0.0.0.0:6516 certhash=$GetSSLThumbprint appid=$netshCommandGetAppID"
+$netshCommandAdd = "netsh http add sslcert ipport=0.0.0.0:6516 certhash=$GetSSLThumbprint appid=$GetAppID"
 & cmd.exe /c $netshCommandAdd
 
 # Start WAC
@@ -87,5 +87,5 @@ Get-ChildItem Cert:\CurrentUser\Root
 Get-ChildItem Cert:\LocalMachine\Root
 Get-ChildItem Cert:\LocalMachine\My
 
-# Import generated CA into cert store to prevent browser error
-Import-Certificate -FilePath "RootCA_$env:COMPUTERNAME.crt" -CertStoreLocation cert:\LocalMachine\Root
+# Import generated root CA into cert store to prevent browser error
+Import-Certificate -FilePath "$dateVariable_RootCA_$env:COMPUTERNAME.crt" -CertStoreLocation cert:\LocalMachine\Root
